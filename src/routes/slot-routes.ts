@@ -15,7 +15,7 @@ const slotRoutes: FastifyPluginCallback = (server, options, done) => {
       request.log.trace(request.query);
       const slots = await getAvailableSlots(request.query);
       return reply.code(200).send(slots); // Return slots;
-    } catch (err: Error | any) {
+    } catch (err: unknown) {
       if (err instanceof Error) {
         return reply.code(400).send({ message: err.message });
       }
@@ -40,13 +40,12 @@ const slotRoutes: FastifyPluginCallback = (server, options, done) => {
     try {
       const slot = await deleteSlot(request.params.id);
       return reply.code(204).send(null);
-    } catch (err: Error | any) {
+    } catch (err: unknown) {
       if (err instanceof Error) {
         // return 404 if not found
         if (err.message === 'Slot not found')
           return reply.code(404).send({ message: err.message });
-        // return 409 if already booked
-        else if (err.message === 'Slot is already booked')
+        if (err.message === 'Slot is already booked')
           return reply.code(409).send({ message: err.message });
       }
       return reply.code(400).send({ message: 'Unknown error' });
@@ -87,7 +86,7 @@ const slotRoutes: FastifyPluginCallback = (server, options, done) => {
     try {
       const slot = await createSlot(request.body);
       return reply.code(201).send(slot); // Return the created slot;
-    } catch (err: Error | any) {
+    } catch (err: unknown) {
       if (err instanceof Error) {
         return reply.code(400).send({ message: err.message });
       }
@@ -114,7 +113,7 @@ const slotRoutes: FastifyPluginCallback = (server, options, done) => {
     try {
       const slot = await bookSlot(request.params.id, request.body.email);
       return reply.code(200).send(slot);
-    } catch (err: Error | any) {
+    } catch (err: unknown) {
       if (err instanceof Error) {
         let statusCode = 400;
         // 1.	Slot must exist.

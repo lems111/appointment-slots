@@ -52,45 +52,43 @@ let allSlots: Array<Slot> = [
 export async function getAvailableSlots(query: SlotQueryString): Promise<Array<SlotResponse>> {
   if (query.from === undefined || query.to === undefined)
     throw new Error('Missing from or to');
-  else {
-    const { from, to } = query;
-    const slots = allSlots.filter((slot) => {
-      const startTime = new Date(slot.start).getTime();
-      const endTime = new Date(slot.end).getTime();
-      const queryStartTime = new Date(from).getTime();
-      const queryEndTime = new Date(to).getTime();
-      return startTime >= queryStartTime && endTime <= queryEndTime && !slot.booked;
-    });
+  const { from, to } = query;
+  const slots = allSlots.filter((slot) => {
+    const startTime = new Date(slot.start).getTime();
+    const endTime = new Date(slot.end).getTime();
+    const queryStartTime = new Date(from).getTime();
+    const queryEndTime = new Date(to).getTime();
+    return startTime >= queryStartTime && endTime <= queryEndTime && !slot.booked;
+  });
 
-    // return slots in 30 minute window
-    let availableSlots: Array<SlotResponse> = [];
-    for (let i = 0; i < slots.length; i++) {
-      const slot = slots[i];
-      const slotStartTime = new Date(slot.start).getTime();
-      const slotEndTime = new Date(slot.end).getTime();
-      const slotDuration = slotEndTime - slotStartTime;
-      const slotDurationMinutes = slotDuration / 1000 / 60;
+  // return slots in 30 minute window
+  const availableSlots: Array<SlotResponse> = [];
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i];
+    const slotStartTime = new Date(slot.start).getTime();
+    const slotEndTime = new Date(slot.end).getTime();
+    const slotDuration = slotEndTime - slotStartTime;
+    const slotDurationMinutes = slotDuration / 1000 / 60;
 
-      // only iterate over 30 minute slots
-      if (slotDurationMinutes % 30 !== 0)
-        continue;
+    // only iterate over 30 minute slots
+    if (slotDurationMinutes % 30 !== 0)
+      continue;
 
-      for (let j = 0; j < slotDurationMinutes; j += 30) {
-        const start = new Date(slotStartTime + j * 60 * 1000);
-        const end = new Date(slotStartTime + (j + 30) * 60 * 1000);
-        const slotResponse: SlotResponse = {
+    for (let j = 0; j < slotDurationMinutes; j += 30) {
+      const start = new Date(slotStartTime + j * 60 * 1000);
+      const end = new Date(slotStartTime + (j + 30) * 60 * 1000);
+      const slotResponse: SlotResponse = {
 
-          id: slot.id,
-          start: start.toISOString(),
-          end: end.toISOString(),
-          booked: slot.booked,
-        }
-        availableSlots.push(slotResponse);
+        id: slot.id,
+        start: start.toISOString(),
+        end: end.toISOString(),
+        booked: slot.booked,
       }
+      availableSlots.push(slotResponse);
     }
-
-    return availableSlots;
   }
+
+  return availableSlots;
 }
 // Delete a slot
 export async function deleteSlot(id: string) {
