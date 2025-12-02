@@ -1,78 +1,160 @@
-# Code Companion Node.js TypeScript Template
+# Appointment Slots API
 
-This repository provides a template for building Fastify-based Node.js applications using TypeScript. It includes a pre-configured setup for development, testing, linting, and deployment.
+A small Fastify-based HTTP API for managing appointment time slots (listing, creating, booking and deleting slots) written in TypeScript.  
+Slots are stored in memory and seeded with a few example entries, which makes this project useful for katas, demos, or as a starting point for a more complete service.
 
 ## Features
 
-- **Fastify Framework**: A fast and low-overhead web framework for Node.js.
-- **TypeScript**: Strongly typed JavaScript for better developer experience.
-- **Environment Configuration**: `.env` support via `dotenv`.
-- **Testing**: Pre-configured with `node:test` and `supertest`.
-- **Linting**: Code linting and formatting using Biome.
-- **Docker Support**: Dockerfile for containerized deployment.
-- **GitHub Actions**: CI/CD pipeline for building, linting, and testing.
-- **Dependabot**: Automated dependency updates.
+- List slots with optional date range and booking state filters.
+- Create new slots with validation (15, 30, or 60 minutes; no overlaps).
+- Book a slot by email with basic email validation.
+- Delete unbooked slots.
+- Query 30‑minute availability windows between two timestamps.
+- Type-safe schemas using TypeBox and Fastify's type provider.
+- Tests using `node:test` and Fastify's `inject` API.
+- Linting and formatting via Biome.
+- Dockerfile and GitHub Actions workflow included.
 
 ## Getting Started
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (version `22.15.0` recommended, see `.nvmrc`)
+- [Node.js](https://nodejs.org/) 22.x (see `.nvmrc`)
+- [npm](https://www.npmjs.com/)
 - [Docker](https://www.docker.com/) (optional, for containerized deployment)
 
 ### Installation
 
-1. Use this repository as a template:
-
-   - Click the **"Use this template"** button on the [GitHub repository page](https://github.com/CodeCompanionBE/code-companion-node-ts-template).
-   - Create a new repository based on this template.
-
-2. Clone your newly created repository:
+1. Clone the repository:
 
    ```bash
-   git clone ...
-   cd your-repo-name
+   git clone https://github.com/lems111/appointment-slots.git
+   cd appointment-slots
    ```
 
-3. Install dependencies:
+2. Install dependencies:
 
    ```bash
    npm install
    ```
 
-4. Copy the example environment file and configure it:
+3. Configure environment variables:
 
    ```bash
    cp .env.example .env
    ```
 
+   Then adjust values as needed, for example:
+
+   - `PORT` – HTTP port for the API (default `3000`).
+   - `LOG_LEVEL` – optional Fastify/Pino log level (`debug`, `info`, etc.).
+
 ### Development
 
-Start the development server with hot-reloading:
+Start the development server with hot reloading:
 
 ```bash
 npm run dev
 ```
 
-The server will run on `http://localhost:3000` by default.
+By default the API is available at `http://localhost:3000` (or the port set in `PORT`).
 
-### Testing
+## API Overview
 
-Run the test suite:
+All endpoints accept and return JSON. Timestamps are ISO 8601 strings in UTC.
+
+- `GET /slots`  
+  List slots, optionally filtered.
+  - Query parameters:
+    - `from` (optional, string, date-time) – minimum start time.
+    - `to` (optional, string, date-time) – maximum start time.
+    - `booked` (optional, boolean) – filter on booking state.
+  - Response: `200 OK` with an array of slots sorted by `start`.
+
+- `POST /slots`  
+  Create a new slot.
+  - Request body:
+    - `start` (string, date-time)
+    - `end` (string, date-time)
+  - Rules:
+    - `start` must be before `end`.
+    - Duration must be exactly 15, 30, or 60 minutes.
+    - Slot must not overlap any existing slot.
+  - Responses:
+    - `201 Created` with the created slot.
+    - `400 Bad Request` on validation errors.
+
+- `POST /slots/:id/book`  
+  Book an existing slot.
+  - Request body:
+    - `email` (string, email)
+  - Responses:
+    - `200 OK` with the booked slot.
+    - `400 Bad Request` for invalid email.
+    - `404 Not Found` if the slot does not exist.
+    - `409 Conflict` if the slot is already booked.
+
+- `DELETE /slots/:id`  
+  Delete a slot if it is not booked.
+  - Responses:
+    - `204 No Content` on successful deletion.
+    - `404 Not Found` if the slot does not exist.
+    - `409 Conflict` if the slot is already booked.
+
+- `GET /slots/availability`  
+  Query 30‑minute availability within a time range.
+  - Query parameters:
+    - `from` (required, string, date-time)
+    - `to` (required, string, date-time)
+  - Response:
+    - `200 OK` with an array of 30‑minute slots derived from unbooked slots.
+    - `400 Bad Request` if `from` or `to` is missing.
+
+Example request:
+
+```bash
+curl "http://localhost:3000/slots?from=2025-11-25T09:00:00Z&to=2025-11-25T17:00:00Z&booked=false"
+```
+
+## Scripts
+
+- `npm run dev` – Start the development server with `ts-node` and hot reloading.
+- `npm run build` – Compile TypeScript to JavaScript in `dist`.
+- `npm test` – Build the project and run tests with `node:test`.
+- `npm run lint` – Lint the codebase with Biome.
+- `npm run docker:build` – Build the Docker image.
+- `npm run docker:run` – Run the Docker container (using `PORT` from `.env` and `LOG_LEVEL=debug`).
+
+## Project Structure
+
+```text
+.
+├── src
+│   ├── index.ts              # Application entry point
+│   ├── server.ts             # Fastify server configuration
+│   ├── routes
+│   │   └── slot-routes.ts    # HTTP routes for slot management
+│   ├── services
+│   │   └── slot-service.ts   # In-memory slot store and business rules
+│   ├── types
+│   │   └── slot-types.ts     # TypeBox schemas and shared types
+│   └── test
+│       └── routes
+│           └── slot-routes.test.ts
+├── .github/workflows         # GitHub Actions workflow
+├── .env.example              # Example environment variables
+├── Dockerfile                # Docker configuration
+├── package.json              # Project metadata and scripts
+└── tsconfig.json             # TypeScript configuration
+```
+
+## Testing
 
 ```bash
 npm test
 ```
 
-### Linting
-
-Lint the codebase:
-
-```bash
-npm run lint
-```
-
-### Docker
+## Docker
 
 Build the Docker image:
 
@@ -86,54 +168,13 @@ Run the Docker container:
 npm run docker:run
 ```
 
-### CI/CD
-
-This repository includes a GitHub Actions workflow for building, linting, and testing the application. The workflow is triggered on pushes and pull requests to the `main` branch.
-
-## Project Structure
-
-```
-.
-├── src
-│   ├── routes          # Fastify route definitions
-│   ├── server.ts       # Fastify server setup
-│   └── index.ts        # Application entry point
-├── .github
-│   └── workflows       # GitHub Actions workflows
-├── .vscode             # VS Code settings
-├── Dockerfile          # Docker configuration
-├── package.json        # Project metadata and scripts
-├── tsconfig.json       # TypeScript configuration
-└── .env.example        # Example environment variables
-```
-
-## Scripts
-
-- `npm run dev`: Start the development server.
-- `npm test`: Run tests.
-- `npm run lint`: Lint the codebase.
-- `npm run docker:build`: Build the Docker image.
-- `npm run docker:run`: Run the Docker container.
-
-## Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository.
-2. Create a new branch for your feature or bugfix.
-3. Commit your changes with clear and concise messages.
-4. Submit a pull request.
-
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
-
-## Author
-
-Created by [Niels Van den Broeck](https://github.com/CodeCompanionBE).
 
 ## Acknowledgments
 
 - [Fastify](https://www.fastify.io/) for the web framework.
 - [TypeScript](https://www.typescriptlang.org/) for type safety.
-- [Docker](https://www.docker.com/) for containerization.
+- [TypeBox](https://github.com/sinclairzx81/typebox) for JSON schema definitions.
+- Based on the Code Companion Node.js TypeScript template by [Niels Van den Broeck](https://github.com/CodeCompanionBE).
