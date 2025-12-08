@@ -22,7 +22,7 @@
     "node-test-junit-reporter": "^2.0.1",
     "nodemon": "^3.1.10",
     "pino-pretty": "^13.1.2",
-    "supertest": "^7.1.0",
+    "supertest": "^7.1.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   },
